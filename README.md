@@ -28,8 +28,9 @@
         WITH SERDEPROPERTIES ("hbase.columns.mapping" = ":key,cb:host_name,cb:remote_host,cb:remote_user,cb:event_ts,cb:req,cb:req_status,cb:resp_bytes,cb:ref,cb:agent")
         TBLPROPERTIES("hbase.table.name"="access_log");
 ## 参考
-    获取详细flume请查看 [Flume] [1]
-    csdn 资料 [csdn blog] [2]
+* 获取详细flume请查看 [Flume] [1]
+* csdn 资料 [csdn blog] [2]
 
 [1]: http://flume.apache.org/FlumeUserGuide.html#asynchbasesink  "flume guide"
 [2]: http://blog.csdn.net/yaoyasong/article/details/39400829 "csdn blog"
+
