@@ -24,7 +24,22 @@
 >> 事件	   数据传输的最小单位，包括事件头和事件体
 
 ###复杂数据流模型
->flume 允许用户通过多级配置，数据流事件需要通过多个agent最终达到终点。也可以配置多source对应一个sink，一个source对应多个sink。下面我们会详细介绍
+>flume 允许用户通过多级配置，数据流事件需要通过多个agent最终达到终点。也可以配置多source对应一个sink，一个source对应多个sink。下面介绍几种常见模型
+
+####多agent串联
+>![multi agent](image/UserGuide_image_mult_agent.png)
+
+>此结构可以用于不同系统中单一数据采集
+
+####多数据源采集
+>![multi source](image/UserGuide_image_multi_source.png)
+
+>采集多数据源时，在每个源上配置一个agent，通过interceptor来给每个源打上标志。在通过一个agent上传到hdfs
+
+####单一数据源多目的地
+>![multi source](image/UserGuide_image_mult_sink.png)
+
+>同一份数据需要向不同系统发送数据
 
 ###可靠性
 >flume 提供端到端的可靠行保障。event通过source缓存到channel，然后sink获取channel中的数据。这个过程flume通过事物来控制，保障一个event没有成功地被sink送入下一个目的地之前，是不会从channel中移除的。
@@ -32,6 +47,25 @@
 ###可恢复性
 >当配置为文件channel时，agent从启动文件中未处理的数据不会丢失。
 
+
+##架构设计原则
+>flume非常灵活，可以允许很多中部署场景。如果你打算在生产系统中部署flume。请花点时间考虑下你需要解决的问题。怎样利用flume更好地解决问题。
+
+1. flume 是否能很好地解决你的问题
+>如果你想采集日志到hdfs系统，flume很适合。对于其他案例，下面有些建议。
+>flume用于传输不间断的事物性数据。对于一次所传输的数据不能超过内存或磁盘大小
+
+2. 你是否对flume深入了解
+>在确定使用flume之前，很有必要详细查看下官方使用手册。对flume深入理解后。能设计出更好解决方案
+
+3. channel的使用技巧
+>channel 可用户缓存数据。对于生产系统产生的数据，如果在客户端不能即使处理的情况下。channel可以充当缓存的作用。
+>所以channel最好设计成文件channel。在新的1.6.0上支持kafka，如果条件允许这个是个不错的选择。
+
+4. flume 高可用必要性讨论
+>传输生产系统的实时数据的系统。是不允许有数据丢失的。flume数据传输不能任意中断，面对这种情况，我们如果需要检查主机，或部署其他应用，需要停止flume，怎么办？
+>在flume中我们可以通过在生产系统方配置大容量channel来缓存数据。
+>构造ha传输系统
 
 ##安装与配置
 1. 配置java环境
