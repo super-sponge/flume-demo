@@ -1,0 +1,6 @@
+09 Nov 2015 15:29:03,224 ERROR [main] (org.apache.flume.node.Application.main:307)  - A fatal error occurred while running. Exception follows.
+org.apache.commons.cli.MissingOptionException: Missing required option: n
+	at org.apache.commons.cli.Parser.checkRequiredOptions(Parser.java:299)
+	at org.apache.commons.cli.Parser.parse(Parser.java:231)
+	at org.apache.commons.cli.Parser.parse(Parser.java:85)
+	at org.apache.flume.node.Application.main(Application.java:252)

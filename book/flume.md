@@ -171,7 +171,15 @@
 	source_apache.sinks.sink1.channel=m1
 	source_apache.sinks.sink2.channel=m2
     
-> 此配置文件配置两个sink，两个channel，分别发想dn3，dn4主机
+    #sinks group
+    source_apache.sinkgroups.g1.sinks = sink1 sink2
+    # load_balance type
+    source_apache.sinkgroups.g1.processor.type = load_balance
+    source_apache.sinkgroups.g1.processor.backoff   = true
+    source_apache.sinkgroups.g1.processor.selector  = random
+
+    
+> 此配置文件配置两个sink，两个channel，分别发向dn3，dn4主机,随机选择发送目的主机
 
 #####接收采集apache的日志并上传到hdfs
     collector.sources=AvroIn
@@ -212,3 +220,144 @@
 1.	本实例中采集apache日志过程中，启动flume的用户必须要有对日子的读和执行权限。
 2.	本实例演示一个数据源向两个（或多个，可以自由扩展）系统提供数据。
 3.	在生产系统中日志采集过程中channel应配置文件channel，以防止数据丢失。
+4.	如果配置内存 channel，在实际测试过程中会丢失数据
+
+### 通过flume sdk构建高可用传输系统
+
+####配置文件
+    client.type = default_loadbalance
+    hosts = dn1 dn2 dn3 dn4 dn5
+    hosts.dn1 = dn1:4547
+    hosts.dn2 = dn2:4547
+    hosts.dn3 = dn3:4547
+    hosts.dn4 = dn4:4547
+    hosts.dn5 = dn5:4547
+
+    backoff = true
+    connect-timeout = 20000
+    request-timeout = 20000
+
+####程序代码
+	 CommandLineParser parser = new BasicParser();
+        Options options = new Options();
+
+        options.addOption("h", "help", false, "send file use flume sdk");
+        options.addOption("c", "conf", true, "configuration file ");
+        options.addOption("f", "file", true, "The file to send");
+
+        CommandLine commandLine = parser.parse(options, args);
+        String configFile = null;
+        String sendFile = null;
+        if (commandLine.hasOption('h')) {
+            logger.info("send a file content by flume");
+            System.exit(0);
+        }
+
+        if (commandLine.hasOption('c')) {
+            configFile = commandLine.getOptionValue('c');
+        }
+        if (commandLine.hasOption('f')) {
+            sendFile = commandLine.getOptionValue('f');
+        }
+
+        if (configFile == null || sendFile == null ) {
+            logger.error("Must have conf and file ");
+            System.exit(-2);
+        }
+
+
+        logger.info("Configuration: " + configFile);
+        logger.info("file: " + sendFile);
+
+        RpcClient client = RpcClientFactory.getInstance(new File(configFile));
+
+        InputStreamReader reader = new InputStreamReader(new FileInputStream(new File(sendFile)));
+        BufferedReader bufferedReader = new BufferedReader(reader);
+        long num = 1;
+        String line = null;
+        Map<String, String> headers = new HashMap<String, String>();
+        while( (line = bufferedReader.readLine()) != null ) {
+            long now = System.currentTimeMillis();
+            headers.put("timestamp", Long.toString(now));
+            Event event = EventBuilder.withBody(line, Charset.forName("UTF-8"), headers);
+            try {
+                client.append(event);
+            } catch (EventDeliveryException e) {
+                e.printStackTrace();
+            }
+
+            if (num % 10000 == 0) {
+                logger.info("Send " + num + " lines");
+            }
+            num ++;
+        }
+
+        reader.close();
+        client.close();
+    }
+
+>详细代码参考 [MyRpcClientFacade.java](https://github.com/super-sponge/flume-demo/tree/master/src/test/java/com/example/client/MyRpcClientFacade.java)
+
+#### 程序调用方式
+>参考[sendData](https://github.com/super-sponge/flume-demo/tree/master/src/main/scripts/sendData.sh)
+
+####说明
+>flume 提供failover 与 loadbalance 配置，生产环境中建议使用loadbalance
+>在实际测试中配置channel为内存时，如程序异常会发生数据重复。主机停机为测试。
+>在实际测试中采用文件channel时，在程序发生异常，数据不重复，不丢失
+>在实际测试中，添加接受主机的数量，对传输不会有明显提高。
+
+
+## 常见问题
+### OOM 问题
+	flume 报错：
+    java.lang.OutOfMemoryError: GC overhead limit exceeded
+    或者：
+    java.lang.OutOfMemoryError: Java heap space
+    Exception in thread "SinkRunner-PollingRunner-DefaultSinkProcessor" java.lang.OutOfMemoryError: Java heap space
+
+>Flume 启动时的最大堆内存大小默认是 20M，线上环境很容易 OOM，因此需要你在 flume-env.sh 中添加 JVM 启动参数: 
+
+	JAVA_OPTS="-Xms8192m -Xmx8192m -Xss256k -Xmn2g -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:-UseGCOverheadLimit"
+>然后在启动 agent 的时候一定要带上 -c conf 选项，否则 flume-env.sh 里配置的环境变量不会被加载生效。
+
+###小文件写入 HDFS 延时的问题
+>flume 的 sink 已经实现了几种最主要的持久化触发器：
+>比如按大小、按间隔时间、按消息条数等等，针对你的文件过小迟迟没法写入 HDFS 持久化的问题，
+>那是因为你此时还没有满足持久化的条件，比如你的行数还没有达到配置的阈值或者大小还没达到等等，
+>可以针对上面 3.2 小节的配置微调下，例如：
+	
+    agent1.sinks.log-sink1.hdfs.rollInterval = 20
+>当迟迟没有新日志生成的时候，如果你想很快的 flush，那么让它每隔 20s flush 持久化一下，agent 会根据多个条件，优先执行满足条件的触发器。
+
+    # Number of seconds to wait before rolling current file (in 600 seconds)
+    agent.sinks.sink.hdfs.rollInterval=600
+
+    # File size to trigger roll, in bytes (256Mb)
+    agent.sinks.sink.hdfs.rollSize = 268435456
+
+    # never roll based on number of events
+    agent.sinks.sink.hdfs.rollCount = 0
+
+    # Timeout after which inactive files get closed (in seconds)
+    agent.sinks.sink.hdfs.idleTimeout = 3600
+
+    agent.sinks.HDFS.hdfs.batchSize = 1000
+
+### 数据重复写入，丢失问题
+>Flume的HDFSsink在数据写入/读出Channel时，都有Transcation的保证。当Transaction失败时，会>回滚，然后重试。但由于HDFS不可修改文件的内容，假设有1万行数据要写入HDFS，而在写入5000行时，网>络出现问题导致写入失败，Transaction回滚，然后重写这10000条记录成功，就会导致第一次写入的>5000>行重复。这些问题是 HDFS 文件系统设计上的特性缺陷，并不能通过简单的Bugfix来解决。我们只能>关闭批量写入，单条事务保证，或者启用监控策略，两端对数。
+>
+>Memory和exec的方式可能会有数据丢失，file 是 end to end 的可靠性保证的，但是性能较前两者要>差。
+>
+>end to end、store on failure 方式 ACK 确认时间设置过短（特别是高峰时间）也有可能引发数据的重复写入。
+
+###在 Flume 中如何修改、丢弃、按预定义规则分类存储数据？
+> 使用interceptor
+
+## Reference
+
+>[flume blog](http://my.oschina.net/leejun2005/blog/288136)
+
+
+    
+
