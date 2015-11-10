@@ -357,6 +357,7 @@
 ## Reference
 
 >[flume blog](http://my.oschina.net/leejun2005/blog/288136)
+>[flume mailbox](http://mail-archives.apache.org/mod_mbox/flume-user)
 
 
     
