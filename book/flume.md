@@ -296,7 +296,7 @@
         client.close();
     }
 
->详细代码参考 [MyRpcClientFacade.java](https://github.com/super-sponge/flume-demo/tree/master/src/test/java/com/example/client/MyRpcClientFacade.java)
+>详细代码参考 [MyRpcClientFacade.java](https://github.com/super-sponge/flume-demo/blob/master/src/main/java/com/example/client/MyRpcClientFacade.java)
 
 #### 程序调用方式
 >参考[sendData](https://github.com/super-sponge/flume-demo/tree/master/src/main/scripts/sendData.sh)
