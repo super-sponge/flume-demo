@@ -172,6 +172,7 @@
 	source_apache.sinks.sink2.channel=m2
     
     #sinks group
+    source_apache.sinkgroups = g1
     source_apache.sinkgroups.g1.sinks = sink1 sink2
     # load_balance type
     source_apache.sinkgroups.g1.processor.type = load_balance
