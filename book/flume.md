@@ -143,34 +143,30 @@
 ####配置文件
 #####采集apache日志配置文件
 
-    source_apache.channels=m1 m2
+    source_apache.channels=m1
     source_apache.sinks=sink1 sink2
-    source_apache.sources=apache_server    
-    
+    source_apache.sources=apache_server
+
     source_apache.sources.apache_server.type=exec
     source_apache.sources.apache_server.command=tail -F /home/tomcat/app/apache-tomcat-hlw/logs/localhost_access_log.txt
-    source_apache.sources.apache_server.selector.type=replicating
     source_apache.sources.apache_server.interceptors=i1
     source_apache.sources.apache_server.interceptors.i1.type=timestamp
 
-	source_apache.channels.m1.type=memory
+    source_apache.channels.m1.type=memory
     source_apache.channels.m1.capacity=1000
     source_apache.channels.m1.transactionCapacity=100
-    source_apache.channels.m2.type=memory
-    source_apache.channels.m2.capacity=1000
-    source_apache.channels.m2.transactionCapacity=100    
 
-	source_apache.sinks.sink1.type=avro
+    source_apache.sinks.sink1.type=avro
     source_apache.sinks.sink1.hostname=dn3
-    source_apache.sinks.sink1.port=4547    
+    source_apache.sinks.sink1.port=4547
     source_apache.sinks.sink2.type=avro
     source_apache.sinks.sink2.hostname=dn4
-    source_apache.sinks.sink2.port=4547    
-    
-	source_apache.sources.apache_server.channels=m1 m2
-	source_apache.sinks.sink1.channel=m1
-	source_apache.sinks.sink2.channel=m2
-    
+    source_apache.sinks.sink2.port=4547
+
+    source_apache.sources.apache_server.channels=m1
+    source_apache.sinks.sink1.channel=m1
+    source_apache.sinks.sink2.channel=m1
+
     #sinks group
     source_apache.sinkgroups = g1
     source_apache.sinkgroups.g1.sinks = sink1 sink2
@@ -178,7 +174,6 @@
     source_apache.sinkgroups.g1.processor.type = load_balance
     source_apache.sinkgroups.g1.processor.backoff   = true
     source_apache.sinkgroups.g1.processor.selector  = random
-
     
 > 此配置文件配置两个sink，两个channel，分别发向dn3，dn4主机,随机选择发送目的主机
 
